@@ -1,0 +1,26 @@
+options:
+    kibana_source:
+        type: string
+        default: 'https://download.elastic.co/kibana/kibana/kibana-4.2.0-linux-x64.tar.gz'
+        description: URL to download the source for kibana
+    kibana_source_checksum:
+        type: string
+        default: '094e197c687012211ae0e291faf3111d47e714d9'
+        description: the sha1sum of the kibana_source
+    port:
+        type: int
+        default: 80
+        description: The tcp port on which nginx will listen.
+    path:
+        type: string
+        default: ''
+        description: 'The url path of kibana. This is required if kibana is
+        proxied at a non root path. e.g. http://example.com/kibana/'
+    dashboards:
+        type: string
+        default: ''
+        description: |
+          Space-separated list of Elasticsearch visualization dashboards to
+          load on deployment.  Dashboards must exist in 'dashboards' directory
+          and contain a load.sh script to populate into Elasticsearch.
+          The only dashboard currently supported out-of-the-box is "beats".

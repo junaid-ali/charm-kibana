@@ -1,0 +1,9 @@
+#!/bin/bash
+set -eux
+juju-log $JUJU_REMOTE_UNIT joined
+
+PORT=$(config-get port)
+
+# Set ip/port for web relation
+relation-set port="$PORT"
+relation-set host=`unit-get private-address`

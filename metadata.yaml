@@ -1,0 +1,18 @@
+name: kibana
+summary: alternative (better) logstash frontend
+maintainers:
+  - Paul Czarkowski <paul@paulcz.net>
+  - Chris MacNaughton <chris.macnaughton@canonical.com>
+description: |
+  alternative (better) logstash frontend
+tags:
+  - applications  
+series:
+  - xenial
+  - trusty
+provides:
+  web:
+    interface: http
+requires:
+  rest:
+    interface: elasticsearch

@@ -1,0 +1,3 @@
+#!/bin/bash
+juju-log $JUJU_REMOTE_UNIT departed
+close-port 9200/tcp

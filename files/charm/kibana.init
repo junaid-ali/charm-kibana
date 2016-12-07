@@ -1,0 +1,32 @@
+# Kibana 4
+#
+description     "Kibana 4"
+
+start on virtual-filesystems
+stop on runlevel [06]
+
+# Respawn it if the process exits
+respawn
+
+# We're setting high here, we'll re-limit below.
+limit nofile 65536 65536
+
+setuid kibana
+setgid kibana
+
+console log
+script
+  # Defaults - Please set KB_HOME
+  PATH=/bin:/usr/bin:$PATH
+  KB_HOME=/srv/kibana4
+  KB_LOG_FILE=/var/log/kibana/kibana.log
+  KB_NICE=19
+
+  HOME="${HOME:-$KB_HOME}"
+
+  # Export variables
+  export PATH HOME
+  test -n "${JAVACMD}" && export JAVACMD
+
+  exec nice -n ${KB_NICE} ${KB_HOME}/bin/kibana --config /etc/kibana/config.yml --log-file ${KB_LOG_FILE}
+end script

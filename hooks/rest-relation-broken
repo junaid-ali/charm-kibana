@@ -1,0 +1,8 @@
+#!/bin/bash
+# This hook runs when the full relation is removed (not just a single member)
+. hooks/helpers.sh
+unset_flag es_ready
+for flag in $(flags loaded_); do
+    unset_flag $flag
+done
+status-set blocked 'waiting for relation to elasticsearch'

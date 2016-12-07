@@ -1,0 +1,85 @@
+#!/bin/bash
+set -eux
+
+# Wrapper to deal with newer Ubuntu versions that don't have py2 installed
+# by default.
+
+declare -a DEPS=('apt' 'netaddr' 'netifaces' 'pip' 'yaml' 'dnspython')
+
+check_and_install() {
+    pkg="${1}-${2}"
+    if ! dpkg -s ${pkg} 2>&1 > /dev/null; then
+        apt-get -y install ${pkg}
+    fi
+}
+
+PYTHON="python"
+
+for dep in ${DEPS[@]}; do
+    check_and_install ${PYTHON} ${dep}
+done
+
+juju-log 'Invoking charm-pre-install hooks'
+[ -d exec.d ] && ( for f in exec.d/*/charm-pre-install; do [ -x $f ] && /bin/sh -c "$f"; done )
+
+HOME=$PWD
+KIBANA_TARBALL=files/kibana.tgz
+KIBANA_SOURCE=$(config-get kibana_source)
+KIBANA_SOURCE_CHECKSUM=$(config-get kibana_source_checksum)
+HOST=$(unit-get private-address)
+
+juju-log "install dependency"
+apt-get update
+apt-get install -y curl wget git nginx
+
+if [[ ! -f $KIBANA_TARBALL ]]; then
+    juju-log "download kibana from elasticsearch.org"
+    wget -q -O /tmp/kibana.tgz ${KIBANA_SOURCE}
+    echo "${KIBANA_SOURCE_CHECKSUM}  /tmp/kibana.tgz" > /tmp/kibana.tgz.sha1
+    sha1sum -c /tmp/kibana.tgz.sha1
+else
+    juju-log "using provided kibana tarball"
+    cp $KIBANA_TARBALL /tmp/kibana.tgz
+fi
+
+if ! grep -q kibana /etc/group ; then
+    groupadd kibana
+fi
+
+if ! /usr/bin/id -u kibana &>/dev/null ; then
+    useradd -s /bin/false -g kibana kibana
+fi
+
+[ -d /var/log/kibana ] || { mkdir -p /var/log/kibana ; chown kibana:kibana /var/log/kibana ; }
+
+install -o root -g root -m 0644 files/charm/nginx.conf /etc/nginx/sites-available/kibana
+install -o root -g root -m 0644 files/charm/nginx_lb.conf /etc/nginx/sites-available/es_cluster
+install -o root -g root -m 0644 files/charm/kibana_lb.conf /etc/nginx/sites-available/kibana_load_balancer
+install -o root -g root -m 0644 files/charm/kibana.init /etc/init/kibana.conf
+mkdir -p /etc/kibana/
+install -o root -g root -m 0644 files/charm/config.yml /etc/kibana/config.yml
+pushd /srv
+
+if [[ ! -d kibana4 ]]; then
+    tar xzvf /tmp/kibana.tgz
+    # Note: charm does not currently support changing kibana source.
+    mv kibana-4.* kibana4
+    chown -R kibana:kibana kibana4
+fi
+
+rm -f /etc/nginx/sites-enabled/default
+
+popd
+
+mkdir -p /home/ubuntu/dashboards
+
+hooks/config-changed
+
+ln -s /etc/nginx/sites-available/kibana /etc/nginx/sites-enabled/kibana
+ln -s /etc/nginx/sites-available/es_cluster /etc/nginx/sites-enabled/es_cluster
+ln -s /etc/nginx/sites-available/kibana_load_balancer /etc/nginx/sites-enabled/kibana_load_balancer
+
+service nginx restart
+service kibana restart
+
+status-set blocked 'waiting for relation to elasticsearch'

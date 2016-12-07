@@ -1,0 +1,40 @@
+#!/bin/bash
+
+set -e
+
+. hooks/helpers.sh
+
+function fail() {
+  # fail the action if we are in an action context
+  if [[ ! -z $JUJU_ACTION_UUID ]]; then
+    action-fail "$@"
+  else
+    >&2 echo "$@"
+  fi
+  exit 0
+}
+
+function load() {
+  juju-log "Loading dashboard $(basename $1)"
+  cd $1
+  ./load.sh
+  cd $CHARM_DIR
+}
+
+if ! flag es_ready; then
+  fail 'Relation to elasticsearch not ready'
+fi
+
+# Support being called directly, or via action context
+DASH=${1:-$(action-get dashboard)}
+
+# Determine if we have a dashboard available
+if [[ -d $CHARM_DIR/dashboards/$DASH ]]; then
+  load $CHARM_DIR/dashboards/$DASH
+elif [[ -d ~ubuntu/dashboards/$DASH ]]; then
+  # support loading dashboards from ~ubuntu/dashboards for easier uploading
+  load ~ubuntu/dashboards/$DASH
+else
+  juju-log "Missing dashboard $DASH"
+  fail "Missing dashboard $DASH"
+fi

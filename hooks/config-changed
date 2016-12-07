@@ -1,0 +1,19 @@
+#!/bin/bash
+set -eux
+
+PORT=$(config-get port)
+KIBANA_PATH=$(config-get path)
+
+sed -i "s/listen.*/listen *:$PORT;/" /etc/nginx/sites-available/kibana
+
+service nginx reload
+service kibana restart
+
+[[ -r .PREVOPENPORT ]] && PREVOPENPORT=$(cat .PREVOPENPORT) || PREVOPENPORT=''
+[[ -z "$PREVOPENPORT" ]] || close-port $PREVOPENPORT/tcp
+
+open-port $PORT/tcp
+echo $PORT > .PREVOPENPORT
+
+. hooks/helpers.sh
+load_dashboards_from_config

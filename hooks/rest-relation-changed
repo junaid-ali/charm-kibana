@@ -1,0 +1,33 @@
+#!/bin/bash
+set -eux
+[ -z "$(relation-get cluster-name)" ] && exit 0
+
+juju-log $JUJU_REMOTE_UNIT modified its settings
+
+juju-log Relation settings:
+relation-get
+juju-log Relation members:
+relation-list
+
+echo "upstream es_cluster {"   > /etc/nginx/sites-available/es_cluster
+
+CLUSTER_NAME=`relation-get cluster-name`
+ES_HOST_LIST="none"
+for MEMBER in `relation-list`
+do
+  ES_HOST=`relation-get private-address ${MEMBER}`
+  echo "  server ${ES_HOST}:9200;" >> /etc/nginx/sites-available/es_cluster
+done
+
+echo "}" >> /etc/nginx/sites-available/es_cluster
+
+juju-log "modified list of ES hosts kibana can talk to :-"
+cat /etc/nginx/sites-available/es_cluster
+
+service nginx restart
+
+status-set active 'ready'
+
+. hooks/helpers.sh
+set_flag es_ready
+load_dashboards_from_config

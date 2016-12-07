@@ -1,0 +1,4 @@
+#!/bin/bash
+juju-log $JUJU_REMOTE_UNIT joined
+open-port 9200/tcp
+status-set waiting 'waiting for elasticsearch'
